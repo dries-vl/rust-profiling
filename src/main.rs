@@ -1,7 +1,8 @@
 use std::alloc::System;
+use jemallocator::Jemalloc;
 
 #[global_allocator]
-static GLOBAL: System = System;
+static GLOBAL: Jemalloc = Jemalloc;
 
 fn main() {
     let start = &mut 0 as *mut i32;
