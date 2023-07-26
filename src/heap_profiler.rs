@@ -2,6 +2,7 @@ use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub static ALLOCATED_BYTES: AtomicUsize = AtomicUsize::new(0);
+pub static MAX_ALLOCATED_BYTES: AtomicUsize = AtomicUsize::new(0);
 
 pub struct ProfilingAllocator;
 
@@ -14,7 +15,7 @@ impl ProfilingAllocator {
     }
 
     pub fn allocated_bytes() -> usize {
-        ALLOCATED_BYTES.load(Ordering::SeqCst)
+        MAX_ALLOCATED_BYTES.load(Ordering::SeqCst)
     }
 
     pub fn reset_bytes() -> () {
@@ -28,6 +29,9 @@ unsafe impl GlobalAlloc for ProfilingAllocator {
         let ptr = System.alloc(layout);
         if !ptr.is_null() {
             ALLOCATED_BYTES.fetch_add(layout.size(), Ordering::SeqCst);
+            if ALLOCATED_BYTES.load(Ordering::SeqCst) > MAX_ALLOCATED_BYTES.load(Ordering::SeqCst) {
+                MAX_ALLOCATED_BYTES.store(ALLOCATED_BYTES.load(Ordering::SeqCst), Ordering::SeqCst);
+            }
         }
         ptr
     }
@@ -43,6 +47,9 @@ unsafe impl GlobalAlloc for ProfilingAllocator {
             let old_size = layout.size();
             if new_size > old_size {
                 ALLOCATED_BYTES.fetch_add(new_size - old_size, Ordering::SeqCst);
+                if ALLOCATED_BYTES.load(Ordering::SeqCst) > MAX_ALLOCATED_BYTES.load(Ordering::SeqCst) {
+                    MAX_ALLOCATED_BYTES.store(ALLOCATED_BYTES.load(Ordering::SeqCst), Ordering::SeqCst);
+                }
             } else {
                 ALLOCATED_BYTES.fetch_sub(old_size - new_size, Ordering::SeqCst);
             }
