@@ -1,2 +1,18 @@
 [build]
 target = "x86_64-unknown-linux-musl"
+
+[profile.dev]
+opt-level = 0
+panic = "unwind"        # abort instead of unwinding: required for using no_std
+strip = "none"
+lto = "off"
+codegen-units = 256
+incremental = true
+
+[profile.release]
+opt-level = 3           # 's' = small binary, 3 (default) = optimize for speed
+panic = "abort"
+strip = "symbols"
+lto = "thin"
+codegen-units = 1
+incremental = false
