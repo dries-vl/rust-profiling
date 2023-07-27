@@ -6,21 +6,20 @@ pub static MAX_ALLOCATED_BYTES: AtomicUsize = AtomicUsize::new(0);
 
 pub struct ProfilingAllocator;
 
-impl ProfilingAllocator {
 
-    pub fn measure_memory<F: FnOnce()>(f: F) -> usize {
-        Self::reset_bytes();
-        f();
-        Self::allocated_bytes()
-    }
+pub fn measure_memory<F: FnOnce()>(f: F) -> usize {
+    reset_bytes();
+    f();
+    allocated_bytes()
+}
 
-    pub fn allocated_bytes() -> usize {
-        MAX_ALLOCATED_BYTES.load(Ordering::SeqCst)
-    }
+fn allocated_bytes() -> usize {
+    MAX_ALLOCATED_BYTES.load(Ordering::SeqCst)
+}
 
-    pub fn reset_bytes() -> () {
-        ALLOCATED_BYTES.store(0, Ordering::SeqCst);
-    }
+fn reset_bytes() -> () {
+    ALLOCATED_BYTES.store(0, Ordering::SeqCst);
+    MAX_ALLOCATED_BYTES.store(0, Ordering::SeqCst);
 }
 
 unsafe impl GlobalAlloc for ProfilingAllocator {

@@ -1,37 +1,23 @@
 use crate::heap_profiler::ProfilingAllocator;
 
 mod heap_profiler;
+mod stack_profiler;
 
 #[global_allocator]
 static GLOBAL: ProfilingAllocator = ProfilingAllocator;
 
 fn main() {
-    test_stack();
 
-    let bytes = ProfilingAllocator::measure_memory(test_stack);
+    stack_profiler::assert_stack_size(|| test_func(), 2765);
+    println!("Stack did not overflow!");
+
+    let bytes = heap_profiler::measure_memory(|| test_func());
     println!("Allocated bytes: {}", bytes);
 
-    ProfilingAllocator::reset_bytes();
-    let _vec_2: Vec<u8> = vec![0; 1000];
-    println!("Allocated bytes: {}", ProfilingAllocator::allocated_bytes());
-}
-
-fn test_stack() {
-    let stack_size = 2765; // plateau of min stack size in bytes
-    let builder = std::thread::Builder::new().stack_size(stack_size);
-    let _vec_2: Vec<u8> = vec![0; 1000];
-
-    let handle = builder.spawn(|| {
-        test_func();
-    });
-
-    match handle.unwrap().join() {
-        Ok(_) => println!("Function executed successfully within stack size."),
-        Err(_) => println!("Stack overflowed!"),
-    }
 }
 
 fn test_func() -> () {
+    vec![1; 1000];
     let mut array = [0; 502];
     array[0] = 1;
 }
