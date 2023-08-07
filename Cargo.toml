@@ -6,3 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+hot-lib-reloader = { version = "0.6.5" }
+wasm-bindgen = { version = "0.2.87" }
+wasm-pack = { version = "0.12.0" }
+wgpu = { version = "0.17.0" }
+winit = { version = "0.28.6" }
+image = { version = "0.24.6" }
