@@ -16,3 +16,12 @@ strip = "symbols"
 lto = "thin"
 codegen-units = 1
 incremental = false
+
+# Compile build-dependencies in release mode with more optimized than default
+# This makes sure the rust shaders are not unoptimized
+#[profile.dev.build-override]
+#opt-level = 3
+[profile.release.build-override]
+opt-level = 3
+codegen-units = 1
+
