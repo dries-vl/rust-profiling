@@ -1,7 +1,7 @@
 #![feature(portable_simd)]
 
 use std::cmp::min;
-use std::simd::{i32x64, i64x8};
+use std::simd::{i32x64, u64x8};
 use std::time::Instant;
 
 use rand::Rng;
@@ -26,7 +26,8 @@ mod compute_shader;
 ///
 ///
 ///
-const N: usize = 1000_000_000;
+///
+const N: usize = 1_000_000;
 
 fn main() {
     // rust-gpu -> spir-v file
@@ -34,43 +35,51 @@ fn main() {
 
     // random array
     let mut rng = rand::thread_rng();
-    let mut arr = Box::new([0_i32; N]);
-
+    let mut arr = vec![0_u64; N].into_boxed_slice();
+    let mut arr_2 = Box::new([0_u64; N]);
     for i in 0..N {
-        arr[i] = rng.gen::<i32>();
+        arr[i] = rng.gen::<u64>();
+        arr_2[i] = rng.gen::<u64>();
     }
 
-    // simd sum
-    let mut simd_arr = Box::new([i32x64::splat(0); N / 64]);
-    arr.chunks_exact(64)
+    let alignment = std::mem::align_of::<Box<[u64; N]>>();
+    println!("alignment: {:?}", alignment);
+
+    // convert array to simd array
+    let mut simd_arr = Box::new([u64x8::splat(0); N / 8]);
+    arr.chunks_exact(8)
         .enumerate()
         .for_each(|(index, chunk)| {
-            simd_arr[index] = i32x64::from_slice(chunk);
+            simd_arr[index] = u64x8::from_slice(chunk);
+        });
+    let mut simd_arr_2 = Box::new([u64x8::splat(0); N / 8]);
+    arr_2.chunks_exact(8)
+        .enumerate()
+        .for_each(|(index, chunk)| {
+            simd_arr_2[index] = u64x8::from_slice(chunk);
         });
 
+    // time the algorithms
     let now = Instant::now();
-    let seq_result = simd_sum(&simd_arr);
-    println!("Simd sum result: {:?}, time: {:?}", seq_result, now.elapsed());
+    let mut result = Box::new([u64x8::splat(0); N / 8]);
+    for i in 0..(N / 8) {
+        result[i] = some_function(simd_arr[i], simd_arr_2[i]);
+    }
+    println!("time: {:?}", now.elapsed());
 
-    // standard sum
     let now = Instant::now();
-    let seq_result = parallel_chunked_sum(&arr);
-    println!("Sum result: {}, time: {:?}", seq_result, now.elapsed());
-
-
-    // let gpu_executor = create_gpu_executor(&mut arr);
-    //
-    // let instant = Instant::now();
-    // pollster::block_on(compute_shader::execute_gpu_inner(
-    //     &gpu_executor,
-    //     &*arr,
-    // ));
-    // println!("compute shader time: {:?}", instant.elapsed().as_millis());
+    let mut result_2 = Box::new([u64x8::splat(0); N / 8]);
+    for b in 0..(N / 8 / 1000) {
+        for i in 0..1000 {
+            result_2[b * 1000 + i] = some_function(simd_arr[b * 1000 + i], simd_arr_2[b * 1000 + i]);
+        }
+    }
+    println!("time: {:?}", now.elapsed());
 }
 
 
-fn some_function(a: i64x8, b: i64x8) -> i64x8 {
-    return a + b;
+fn some_function(a: u64x8, b: u64x8) -> u64x8 {
+    a + b
 }
 
 /// **950ms**
