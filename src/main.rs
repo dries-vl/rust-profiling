@@ -29,18 +29,26 @@ mod compute_shader;
 ///
 const N: usize = 1_000_000;
 
+#[repr(align(64))]
+struct some_struct(u64, u64);
+
 fn main() {
     // rust-gpu -> spir-v file
     const SHADER: &[u8] = include_bytes!(env!("rust_gpu.spv"));
 
     // random array
     let mut rng = rand::thread_rng();
-    let mut arr = vec![0_u64; N].into_boxed_slice();
+    let mut arr = Box::new([0_u64; N]);
     let mut arr_2 = Box::new([0_u64; N]);
     for i in 0..N {
         arr[i] = rng.gen::<u64>();
         arr_2[i] = rng.gen::<u64>();
     }
+
+    let now = Instant::now();
+    create_gpu_executor(&mut arr);
+    println!("gpu time: {:?}", now.elapsed());
+
 
     let alignment = std::mem::align_of::<Box<[u64; N]>>();
     println!("alignment: {:?}", alignment);
@@ -75,11 +83,31 @@ fn main() {
         }
     }
     println!("time: {:?}", now.elapsed());
+
+    let now = Instant::now();
+    println!("{}", fib_iter(47));
+    println!("time: {:?}", now.elapsed());
 }
 
 
 fn some_function(a: u64x8, b: u64x8) -> u64x8 {
-    a + b
+        a + b
+}
+
+fn fib(n: u64) -> u64 {
+    if n <= 1 {
+        return n;
+    }
+    fib(n - 1) + fib(n - 2)
+}
+
+fn fib_iter(length: u64) -> u64 {
+    let (mut current, mut last) = (0, 1);
+    for _ in 0..length {
+        std::mem::swap(&mut current, &mut last);
+        current += last;
+    }
+    current
 }
 
 /// **950ms**
@@ -115,7 +143,7 @@ fn parallel_sum(arr: &[i32; N]) -> i32 {
         .sum()
 }
 
-/// **200ms** --slighty less overhead than par_iter--
+/// **200ms** --slight less overhead than par_iter--
 /// 100 chunks is about optimal
 /// speedup; also good for 5-10ms range
 fn parallel_chunked_sum(arr: &[i32; N]) -> i32 {
@@ -129,7 +157,7 @@ fn parallel_chunked_sum(arr: &[i32; N]) -> i32 {
         .sum()
 }
 
-fn create_gpu_executor(arr: &mut [i32; N]) -> GpuExecutor {
+fn create_gpu_executor(arr: &mut [u64; N]) -> GpuExecutor {
 // create gpu device
     let (device, queue) = pollster::block_on(compute_shader::setup_gpu())
         .expect("Could not connect to the gpu");

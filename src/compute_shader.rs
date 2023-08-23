@@ -3,6 +3,7 @@ use std::time::Instant;
 
 use wgpu::{BindGroup, Buffer, BufferAddress, CommandEncoder, ComputePipeline, Device, Queue};
 use wgpu::util::DeviceExt;
+
 use crate::N;
 
 // Indicates a u32 overflow in an intermediate Collatz value
@@ -22,7 +23,7 @@ pub struct GpuExecutor {
 pub async fn setup_gpu() -> Option<(Device, Queue)> {
     /// **1300ms**
     // Instantiates instance of WebGPU
-    let instance = wgpu::Instance::default();
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {backends: wgpu::Backends::VULKAN, dx12_shader_compiler: wgpu::Dx12Compiler::default()});
 
     /// **150ms**
     // `request_adapter` instantiates the general connection to the GPU
@@ -171,7 +172,7 @@ pub fn create_pipeline(device: &Device, shader: &str) -> ComputePipeline {
 }
 
 /// **4ms**
-pub fn create_buffers(device: &Device, arr: &[i32; N]) -> (BufferAddress, Buffer, Buffer) {
+pub fn create_buffers(device: &Device, arr: &[u64; N]) -> (BufferAddress, Buffer, Buffer) {
 
     // Gets the size in bytes of the buffer.
     let size = std::mem::size_of_val(arr) as BufferAddress;
